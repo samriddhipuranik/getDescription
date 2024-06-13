@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto CVE</title>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"> -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1e1e1e; /* Dark background */
+            color: #8aff80; /* Light green text */
+            /* font-family: 'Roboto', sans-serif;  */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            width: 80%;
+            max-width: 1200px;
+            background-color: #2a2a2a; /* Darker background for container */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .left-column {
+            flex: 1;
+            padding: 20px;
+        }
+        .right-column {
+            flex: 2;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .form input {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #8aff80;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .form button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        .form button:hover {
+            background-color: #45a049;
+        }
+        .label-error {
+            visibility: hidden;
+            color: red;
+            margin-bottom: 10px;
+        }
+        .label-error.active {
+            visibility: visible;
+        }
+        .results {
+            display: none;
+        }
+        .results.active {
+            display: block;
+        }
+        .description {
+            margin-bottom: 20px;
+        }
+        .copy-btn {
+            cursor: pointer;
+            background-color: #1e88e5; /* Blue button */
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            text-align: center;
+            text-decoration: none;
+            display: none;
+            font-size: 14px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .copy-btn:hover {
+            background-color: #0d47a1; /* Darker blue on hover */
+        }
+        .copied {
+            background-color: #555;
+        }
+        .loader {
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #3498db; 
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-column">
+            <div class="header">
+                <h3>Welcome to GetDescription!</h3>
+            </div>
+            <form id="CVE" class="form">
+                <label for="findCVE" style="color: #8aff80;">Enter CVE:</label>
+                <input id="findCVE" placeholder="CCVE-YYYY-XXXX" />
+                <br>
+                <label class="label-error" id="labelforValidity">Invalid! Enter valid CVE.</label>
+                <br>
+                <button id="btn" type="submit">Submit</button>
+                <div class="loader" id="loader"></div>
+            </form>
+        </div>
+        <div class="right-column">
+            <div class="results" id="results">
+                <div class="description">
+                    <h3>CVE Description</h3>
+                    <p id="cveDescription"></p>
+                    <button class="copy-btn" id="copyCVE">Copy CVE Description</button>
+                </div>
+                <div class="description">
+                    <h3>CWE Description</h3>
+                    <p id="cweDescription"></p>
+                    <button class="copy-btn" id="copyCWE">Copy CWE Description</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('CVE').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const cveId = document.getElementById('findCVE').value.trim();
+            const cvePattern = /^CVE-(1999|20[0-9]{2})-\d{4}$/;
+            if (!cvePattern.test(cveId)) {
+                document.getElementById('labelforValidity').classList.add('active');
+                document.getElementById('copyCVE').style.display = 'none';
+                document.getElementById('copyCWE').style.display = 'none';
+                document.getElementById('results').classList.remove('active');
+                return;
+            } else {
+                document.getElementById('labelforValidity').classList.remove('active');
+            }
+
+            // Show loader and hide results section
+            document.getElementById('loader').style.display = 'inline-block';
+            document.getElementById('results').classList.remove('active');
+
+            fetch('/get_cve_info', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `cve_id=${cveId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loader and show results section
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('results').classList.add('active');
+
+                // Display CVE and CWE descriptions
+                document.getElementById('cveDescription').textContent = data.cve_description;
+                document.getElementById('cweDescription').textContent = data.cwe_description;
+
+                // Show copy buttons
+                document.getElementById('copyCVE').style.display = 'inline-block';
+                document.getElementById('copyCWE').style.display = 'inline-block';
+
+                // Clear error message if previously shown
+                document.getElementById('labelforValidity').classList.remove('active');
+
+                // Reset copy button text after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('copyCVE').textContent = 'Copy CVE Description';
+                    document.getElementById('copyCWE').textContent = 'Copy CWE Description';
+                }, 3000);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);  // Debug log
+                // Hide loader and display error message
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('labelforValidity').classList.add('active');
+                document.getElementById('copyCVE').style.display = 'none';
+                document.getElementById('copyCWE').style.display = 'none';
+                document.getElementById('results').classList.remove('active');
+            });
+        });
+
+        // Function to copy text to clipboard
+        function copyToClipboard(text, buttonId) {
+            const textarea = document.createElement('textarea');
+            textarea.textContent = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            const button = document.getElementById(buttonId);
+            button.textContent = 'Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.textContent = 'Copy ' + (buttonId === 'copyCVE' ? 'CVE Description' : 'CWE Description');
+                button.classList.remove('copied');
+            }, 3000);
+        }
+
+        // Copy CVE description on button click
+        document.getElementById('copyCVE').addEventListener('click', function() {
+            const cveDescription = document.getElementById('cveDescription').textContent;
+            copyToClipboard(cveDescription, 'copyCVE');
+        });
+
+        // Copy CWE description on button click
+        document.getElementById('copyCWE').addEventListener('click', function() {
+            const cweDescription = document.getElementById('cweDescription').textContent;
+            copyToClipboard(cweDescription, 'copyCWE');
+        });
+    </script>
+</body>
+</html>
